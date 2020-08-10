@@ -11,10 +11,10 @@ fun main() {
   //Launch your async job in your scope and manage it
   multipleAwaitExample(mainScope)
 
-  Thread.sleep(50)
+  Thread.sleep(5000)
+//No need to send request to API so cancel Job
+  //mainScope.onStop()
 
-  //No need to send request to API so cancel Job
-  //mainScope.cancel()
 
 
 
@@ -22,11 +22,11 @@ fun main() {
 
 fun multipleAwaitExample( mainScope: CoroutineScope) {
   val userId = 992 // the ID of the user we want
-
   val job = mainScope.launch {
     val userDeferred = getUserByIdFromNetwork(userId, this)
     val usersFromFileDeferred = readUsersFromFile("users.txt", this)
-    // try to cause exception
+
+    //todo: try to cause exception
     //val usersFromFileDeferred = readUsersFromFile("user2s.txt", this)
 
     if (isActive) {
@@ -42,5 +42,4 @@ fun multipleAwaitExample( mainScope: CoroutineScope) {
     }
   }
 
-  Thread.sleep(5000)
 }

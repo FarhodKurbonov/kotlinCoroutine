@@ -9,6 +9,7 @@ import java.io.File
     return user in users
   }
 
+  //Simulate API Call
   public fun getUserByIdFromNetwork(
       userId: Int,
       scope: CoroutineScope) =
@@ -23,6 +24,7 @@ import java.io.File
         User(userId, "Filip", "Babic") // we simulate the network call
       }
 
+  //Simulate DB Call
   public fun readUsersFromFile(
       filePath: String,
       scope: CoroutineScope) =
