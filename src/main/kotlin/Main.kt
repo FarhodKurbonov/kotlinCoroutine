@@ -1,6 +1,8 @@
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.produce
 
 // = = = = = = Key points = = = = = =
 //  Channels provide the functionality for sending and receiving streams of values.
@@ -20,39 +22,36 @@ import kotlinx.coroutines.channels.SendChannel
 
 //  Java BlockingQueue has a similar to Kotlin Channel behavior, the main difference is that the current thread gets
 // blocked if the operation of inserting or retrieving is unavailable at the moment.
+//=====================================================================================================================
 
+
+// While loop can cause exception due to race condition best approach to create Channel, produce and consume data from channel
+//is to use @produe and cousumeEeach functions
+@ObsoleteCoroutinesApi
+@ExperimentalCoroutinesApi
 fun main()  {
-  //1
   val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes", "Strawberry")
-  // 2 Init Producer
-  val kotlinChannel = Channel<String>()
-  runBlocking() {
-    //3 Send data into Channel
-    GlobalScope.launch {
-      for (fruit in fruitArray) {
-        //4
-        kotlinChannel.send(fruit)
 
-        //5
-        if (fruit == "Pear") {
-          //6
-          kotlinChannel.close()
-        }
+  fun produceFruits() = GlobalScope.produce<String> {
+    for (fruit in fruitArray) {
+      send(fruit)
+
+      // Conditional close
+      if (fruit == "Pear") {
+        // Signal that closure of channel
+        close()
       }
     }
-    //7 Consumer via If operator <- use this operator because it understands Iterator and sequence under the hood and does it in proficient way
-//    for (fruit in kotlinChannel) {
-//      println(fruit)
-//    }
-    //7 Consumer via while operator
-    while (!kotlinChannel.isClosedForReceive) {
-      val value = kotlinChannel.receive()
-      println(value)
-    }
-
-    //8
-    println("Done")
   }
+
+  runBlocking {
+    val fruits = produceFruits()
+    fruits.consumeEach { println(it) }
+    println("Done!")
+  }
+
+
+
 }
 
 
