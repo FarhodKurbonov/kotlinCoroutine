@@ -1,7 +1,7 @@
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 // = = = = = = Key points = = = = = =
 //  Channels provide the functionality for sending and receiving streams of values.
@@ -26,31 +26,64 @@ import kotlinx.coroutines.channels.consumeEach
 
 fun main() {
   val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes", "Strawberry")
-  //The capacity of the channel is 0 (RENDEZVOUS).
+  //1 The capacity of the channel is 0 (RENDEZVOUS).
   val kotlinChannel = Channel<String>()
 
   runBlocking {
+
     launch {
       for (fruit in fruitArray) {
-        //Using offer() is similar to send().
-        //As soon as the first value("Apple") is sent, the channel is full.
-        //Once the channel is full, calls to offer() doesn’t send anything.
-        //Instead, it returns false, which is denoted by print statements Banana wasn’t sent and similar statements.
-        val wasSent = kotlinChannel.offer(fruit) //<----offer method of Channel
-        if (wasSent) {
-          println("Sent: $fruit")
-        } else {
-          println("$fruit wasn’t sent")
+        if (fruit == "Pear") {
+          break
         }
+        kotlinChannel.send(fruit)
+        println("Sent: $fruit")
       }
-      kotlinChannel.close()
     }
 
-    for (fruit in kotlinChannel) {
-      println("Received: $fruit")
+    launch {
+      repeat(fruitArray.size) {
+        //2 “Using poll() is similar to receive().
+        //As soon as the first value("Apple") is sent, the channel is full. The consumer then receives the value, after which time the channel is empty again.
+        //Another cycle of the above process runs with the second value "Banana".
+        //For the third value, "Pear", because of the if check in the for loop, no more items are sent in the channel, i.e., the channel is empty.
+
+        val fruit = kotlinChannel.poll()
+        //3 Once the channel is empty, calls to poll() returns null, which is denoted by print statements "Channel is empty".
+        if (fruit != null) {
+          println("Received: $fruit")
+        } else {
+          println("Channel is empty")
+        }
+
+        delay(500)
+      }
+      println("Done!")
     }
-    println("Done!")
+
+
   }
+
+  // Offer and Poll are non suspendable function. Hence they can be uses without coroutine
+  for (fruit in fruitArray) {
+    if (fruit == "Pear") {
+      break
+    }
+    kotlinChannel.offer(fruit) //<-- Offer
+    println("Sent: $fruit")
+  }
+
+  repeat(fruitArray.size) {
+    val fruit = kotlinChannel.poll() //<--poll
+    if (fruit != null) {
+      println("Received: $fruit")
+    } else {
+      println("Channel is empty")
+    }
+
+  }
+  println("Done!")
+
 
 }
 
