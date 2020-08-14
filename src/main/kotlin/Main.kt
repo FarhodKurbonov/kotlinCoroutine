@@ -25,65 +25,62 @@ import kotlinx.coroutines.runBlocking
 
 
 fun main() {
+
   val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes", "Strawberry")
-  //1 The capacity of the channel is 0 (RENDEZVOUS).
+
   val kotlinChannel = Channel<String>()
-
+  // ----- Closing channel on producer site while consumer tries to get value -----
+/*
   runBlocking {
-
     launch {
       for (fruit in fruitArray) {
-        if (fruit == "Pear") {
-          break
+        // Conditional close
+        if (fruit == "Grapes") {
+          // Signal that closure of channel
+          //Once close is called, all values retrieved after that raise the ClosedReceiveChannelException.
+          kotlinChannel.close()
         }
+
         kotlinChannel.send(fruit)
-        println("Sent: $fruit")
       }
     }
 
-    launch {
-      repeat(fruitArray.size) {
-        //2 “Using poll() is similar to receive().
-        //As soon as the first value("Apple") is sent, the channel is full. The consumer then receives the value, after which time the channel is empty again.
-        //Another cycle of the above process runs with the second value "Banana".
-        //For the third value, "Pear", because of the if check in the for loop, no more items are sent in the channel, i.e., the channel is empty.
-
-        val fruit = kotlinChannel.poll()
-        //3 Once the channel is empty, calls to poll() returns null, which is denoted by print statements "Channel is empty".
-        if (fruit != null) {
-          println("Received: $fruit")
-        } else {
-          println("Channel is empty")
-        }
-
-        delay(500)
+    repeat(fruitArray.size) {
+      try {
+        val fruit = kotlinChannel.receive()
+        println(fruit)
+      } catch (e: Exception) {
+        println("Exception raised: ${e.javaClass.simpleName}")
       }
+    }
+    println("Done!")
+  }
+*/
+
+  // ----- Closing channel on consumer site while producer tries to send value -----
+  runBlocking {
+    launch {
+      for (fruit in fruitArray) {
+        try {
+          kotlinChannel.send(fruit)
+        } catch (e: Exception) {
+          println("Exception raised: ${e.javaClass.simpleName}")
+        }
+      }
+
       println("Done!")
     }
 
-
-  }
-
-  // Offer and Poll are non suspendable function. Hence they can be uses without coroutine
-  for (fruit in fruitArray) {
-    if (fruit == "Pear") {
-      break
+    repeat(fruitArray.size - 1) {
+      val fruit = kotlinChannel.receive()
+      // Conditional close
+      if (fruit == "Grapes") {
+        // Signal that closure of channel
+        kotlinChannel.close()
+      }
+      println(fruit)
     }
-    kotlinChannel.offer(fruit) //<-- Offer
-    println("Sent: $fruit")
   }
-
-  repeat(fruitArray.size) {
-    val fruit = kotlinChannel.poll() //<--poll
-    if (fruit != null) {
-      println("Received: $fruit")
-    } else {
-      println("Channel is empty")
-    }
-
-  }
-  println("Done!")
-
 
 }
 
