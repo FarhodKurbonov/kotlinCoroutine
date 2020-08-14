@@ -24,27 +24,32 @@ import kotlinx.coroutines.channels.consumeEach
 //=====================================================================================================================
 
 
-@ExperimentalCoroutinesApi
 fun main() {
   val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes", "Strawberry")
-
-  val kotlinBufferedChannel = Channel<String>(2)
+  //The capacity of the channel is 0 (RENDEZVOUS).
+  val kotlinChannel = Channel<String>()
 
   runBlocking {
     launch {
       for (fruit in fruitArray) {
-        kotlinBufferedChannel.send(fruit)
-        println("Produced: $fruit")
+        //Using offer() is similar to send().
+        //As soon as the first value("Apple") is sent, the channel is full.
+        //Once the channel is full, calls to offer() doesn’t send anything.
+        //Instead, it returns false, which is denoted by print statements Banana wasn’t sent and similar statements.
+        val wasSent = kotlinChannel.offer(fruit) //<----offer method of Channel
+        if (wasSent) {
+          println("Sent: $fruit")
+        } else {
+          println("$fruit wasn’t sent")
+        }
       }
-      kotlinBufferedChannel.close()
+      kotlinChannel.close()
     }
 
-    launch {
-      for (fruit in kotlinBufferedChannel) {
-        println("Consumed: $fruit")
-        delay(1000)
-      }
+    for (fruit in kotlinChannel) {
+      println("Received: $fruit")
     }
+    println("Done!")
   }
 
 }
