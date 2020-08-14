@@ -1,8 +1,5 @@
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.channels.*
 
 // = = = = = = Key points = = = = = =
 //  Channels provide the functionality for sending and receiving streams of values.
@@ -24,35 +21,81 @@ import kotlinx.coroutines.channels.produce
 // blocked if the operation of inserting or retrieving is unavailable at the moment.
 //=====================================================================================================================
 
+data class Fruit(override val name: String, override val color: String) : Item
+data class Vegetable(override val name: String, override val color: String) : Item
 
-// While loop can cause exception due to race condition best approach to create Channel, produce and consume data from channel
-//is to use @produe and cousumeEeach functions
-@ObsoleteCoroutinesApi
+interface Item {
+  val color: String
+  val name: String
+}
+
 @ExperimentalCoroutinesApi
-fun main()  {
-  val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes", "Strawberry")
+fun main() {
+  // ------------ Helper Methods ------------
+  fun isFruit(item: Item): Boolean = (item is Fruit)
+  fun isRed(item: Item): Boolean = (item.color == "Red")
 
-  fun produceFruits() = GlobalScope.produce<String> {
-    for (fruit in fruitArray) {
-      send(fruit)
 
-      // Conditional close
-      if (fruit == "Pear") {
-        // Signal that closure of channel
-        close()
+  // ------------ Pipeline ------------
+  // 1
+  fun produceItems() = GlobalScope.produce {
+    val itemsArray = ArrayList<Item>()
+    itemsArray.add(Fruit("Apple", "Red"))
+    itemsArray.add(Vegetable("Zucchini", "Green"))
+    itemsArray.add(Fruit("Grapes", "Green"))
+    itemsArray.add(Vegetable("Radishes", "Red"))
+    itemsArray.add(Fruit("Banana", "Yellow"))
+    itemsArray.add(Fruit("Cherries", "Red"))
+    itemsArray.add(Vegetable("Broccoli ", "Green"))
+    itemsArray.add(Fruit("Strawberry", "Red"))
+
+    // Send each item in the channel
+    itemsArray.forEach {
+      send(it) //<-- First Channel
+    }
+  }
+
+  // 2
+  fun isFruit(items: ReceiveChannel<Item>) = GlobalScope.produce {
+    for (item in items) {
+      // Send each item in the channel only if it is a fruit
+      if (isFruit(item)) {
+        send(item) //<-- Second Channel
+      }
+    }
+  }
+
+  // 3
+  fun isRed(items: ReceiveChannel<Item>) = GlobalScope.produce {
+    for (item in items) {
+      // Send each item in the channel only if it is red in color
+      if (isRed(item)) {
+        send(item) //<-- Second Channel
       }
     }
   }
 
   runBlocking {
-    val fruits = produceFruits()
-    fruits.consumeEach { println(it) }
+    // 4 First Channel
+    val itemsChannel = produceItems()
+    // 5 Passed vegetables and fruits. Returning only fruits as channel
+    val fruitsChannel = isFruit(itemsChannel)
+    // 6 Passing Fruits channel. Returning red type fruits
+    val redChannel = isRed(fruitsChannel)
+    // 7
+    for (item in redChannel) {
+      print("${item.name}, ")
+    }
+    // 8 It is recommended to cancel all the coroutines for good measure but not neccessary
+    redChannel.cancel()
+    fruitsChannel.cancel()
+    itemsChannel.cancel()
+
+    // 9
     println("Done!")
   }
-
-
-
 }
+
 
 
 
