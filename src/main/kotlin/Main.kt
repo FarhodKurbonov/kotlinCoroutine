@@ -6,7 +6,14 @@ import java.awt.event.FocusEvent
 import kotlin.random.Random
 
 // = = = = = = Key points = = = = = =
-// *  Delegating actor workload and running actors in parallel
+//Produce-consumer pattern and the actor model are tried and tested mechanisms for multi-threading.
+//Producer-consumer relationships are one-to-many, where you can consume the events from multiple places.
+//The actor model is a way to share data in a multithread environment using a dedicated queue.
+//The actor model allows you to offload large amounts of work to many smaller constructs.
+//Actors have a many-to-one relationship, since you can send events from multiple places, but they all end up in one actor.
+//Each actor can create new actors, delegating and offloading work.
+//Building actors using threads can be expensive, which is where coroutines come in handy.
+//Actors can be arranged to run in sequential order, or to run in parallel
 
 //---Scenario----
 //The actor model, however, relies on delegating excess work to others. So, for example, if you’re building a robot-powered-storage system,
