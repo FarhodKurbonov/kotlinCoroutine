@@ -1,36 +1,46 @@
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import java.awt.event.FocusEvent
 import kotlin.random.Random
 
 // = = = = = = Key points = = = = = =
-//Multi processing communication using PRODUCER-CONSUMER approach to broadcast message
-//=====================================================================================================================
 
+//=====================================================================================================================
+//You create a simple implementation of the CompletionHandler, which just prints a Completed!
+//message when the actor is complete. This is happening when close() is invoked on its SendChannel
+object completionHandler: CompletionHandler {
+  override fun invoke(cause: Throwable?) {
+    println("Completed!")
+  }
+}
 
 @ExperimentalCoroutinesApi
+@ObsoleteCoroutinesApi
 fun main() {
-  val receivedChannel = GlobalScope.produce(capacity = 10) {
-    while (isActive) {
-      val number = Random.nextInt(0, 20)
-      send(number)
-      println("$number send")
-
+//2 Сreate the actor passing a capacity of 10 and the reference to the CompletionHandler.
+  val actor = GlobalScope.actor<String>(
+      onCompletion = completionHandler
+      ) {
+    // consumer logic
+    channel.consumeEach {
+      println("$it has been received")
     }
   }
-
+  //4 Simple loop, which offers 10 values into the channel for the actor
   GlobalScope.launch {
-    receivedChannel.consumeEach { println("Consumer 1: $it received") }
+
+    (1..10).forEach{
+      println("$it send")
+      actor.send( it.toString())
+    }
+    //5 “sent all your values and you can close the actor.
+    actor.close()
   }
 
-  GlobalScope.launch {
-    receivedChannel.consumeEach { println("Consumer 2: $it received") }
-  }
-
-  Thread.sleep(30L)
+  //6
+  Thread.sleep(1500)
 }
 
 
