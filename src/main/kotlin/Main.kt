@@ -1,4 +1,6 @@
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -25,66 +27,42 @@ import kotlinx.coroutines.runBlocking
 
 
 fun main() {
-
-  val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes", "Strawberry")
-
+  // 1 A string array of fruit names is created, named fruitArray.
+  val fruitArray = arrayOf("Apple", "Banana", "Pear", "Grapes",
+      "Strawberry")
+  // 2
   val kotlinChannel = Channel<String>()
-  // ----- Closing channel on producer site while consumer tries to get value -----
-/*
+
+  // 3
   runBlocking {
-    launch {
-      for (fruit in fruitArray) {
-        // Conditional close
-        if (fruit == "Grapes") {
-          // Signal that closure of channel
-          //Once close is called, all values retrieved after that raise the ClosedReceiveChannelException.
-          kotlinChannel.close()
-        }
 
-        kotlinChannel.send(fruit)
+    // 4 Producer
+    GlobalScope.launch {
+      // Send data in channel
+      kotlinChannel.send(fruitArray[0])
+    }
+
+    // 5 Consumers
+    GlobalScope.launch {
+      kotlinChannel.consumeEach { value ->
+        println("Consumer 1: $value")
+      }
+    }
+    GlobalScope.launch {
+      kotlinChannel.consumeEach { value ->
+        println("Consumer 2: $value")
       }
     }
 
-    repeat(fruitArray.size) {
-      try {
-        val fruit = kotlinChannel.receive()
-        println(fruit)
-      } catch (e: Exception) {
-        println("Exception raised: ${e.javaClass.simpleName}")
-      }
-    }
-    println("Done!")
-  }
-*/
+    // 6
+    println("Press a key to exit...")
+    readLine()
 
-  // ----- Closing channel on consumer site while producer tries to send value -----
-  runBlocking {
-    launch {
-      for (fruit in fruitArray) {
-        try {
-          kotlinChannel.send(fruit)
-        } catch (e: Exception) {
-          println("Exception raised: ${e.javaClass.simpleName}")
-        }
-      }
-
-      println("Done!")
-    }
-
-    repeat(fruitArray.size - 1) {
-      val fruit = kotlinChannel.receive()
-      // Conditional close
-      if (fruit == "Grapes") {
-        // Signal that closure of channel
-        kotlinChannel.close()
-      }
-      println(fruit)
-    }
+    // 7
+    kotlinChannel.close()
   }
 
 }
-
-
 
 
 
