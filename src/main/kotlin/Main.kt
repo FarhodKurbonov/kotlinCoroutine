@@ -6,42 +6,95 @@ import java.awt.event.FocusEvent
 import kotlin.random.Random
 
 // = = = = = = Key points = = = = = =
+// *  Delegating actor workload and running actors in parallel
 
+//---Scenario----
+//The actor model, however, relies on delegating excess work to others. So, for example, if you’re building a robot-powered-storage system,
+//where everything is organized by robots, you have to find a way to optimize the workload.
+//If a certain robot has too much to carry around, it can pass some of its work on to a different robot.
+//And if that second robot has too much work, it can pass it to a third one, and so forth.
 //=====================================================================================================================
-//You create a simple implementation of the CompletionHandler, which just prints a Completed!
-//message when the actor is complete. This is happening when close() is invoked on its SendChannel
-object completionHandler: CompletionHandler {
-  override fun invoke(cause: Throwable?) {
-    println("Completed!")
-  }
-}
 
-@ExperimentalCoroutinesApi
-@ObsoleteCoroutinesApi
+data class Package(public val id: Int, public val name: String)
+
 fun main() {
-//2 Сreate the actor passing a capacity of 10 and the reference to the CompletionHandler.
-  val actor = GlobalScope.actor<String>(
-      onCompletion = completionHandler
-      ) {
-    // consumer logic
-    channel.consumeEach {
-      println("$it has been received")
-    }
-  }
-  //4 Simple loop, which offers 10 values into the channel for the actor
-  GlobalScope.launch {
+  val items = listOf(
+      Package(1, "coffee"),
+      Package(2, "chair"),
+      Package(3, "sugar"),
+      Package(4, "t-shirts"),
+      Package(5, "pillowcases"),
+      Package(6, "cellphones"),
+      Package(7, "skateboard"),
+      Package(8, "cactus plants"),
+      Package(9, "lamps"),
+      Package(10, "ice cream"),
+      Package(11, "rubber duckies"),
+      Package(12, "blankets"),
+      Package(13, "glass")
+  )
 
-    (1..10).forEach{
-      println("$it send")
-      actor.send( it.toString())
-    }
-    //5 “sent all your values and you can close the actor.
-    actor.close()
-  }
+  val initialRobot = WarehouseRobot(1, items)
 
-  //6
-  Thread.sleep(1500)
+  initialRobot.organizeItems()
+  Thread.sleep(5000)
 }
+
+class WarehouseRobot(private val id: Int, private var packages: List<Package>) {
+  companion object{
+    private const val ROBOT_CAPACITY = 3
+  }
+
+  @ObsoleteCoroutinesApi
+  fun organizeItems() {
+    val itemsToProcess = packages.take(ROBOT_CAPACITY)
+    val leftoverItems = packages.drop(ROBOT_CAPACITY)
+
+    packages = itemsToProcess
+    val packageIds = packages.map { it.id }.fold("") {acc, item -> "$acc $item"}
+    processItems(itemsToProcess)
+
+    if (leftoverItems.isNotEmpty()) {
+      GlobalScope.launch {
+        val helperRobot = WarehouseRobot(id.inc(), leftoverItems)
+        helperRobot.organizeItems()
+      }
+
+    }
+    processItems(itemsToProcess)
+    println("Robot #$id processed following packages:$packageIds")
+  }
+
+  @ObsoleteCoroutinesApi
+  private fun processItems(items: List<Package>) {
+     val actor = GlobalScope.actor<Package> (capacity = ROBOT_CAPACITY){
+       var hasProcessedItems = false
+
+       while (packages.isNotEmpty()){
+         val currentPackage = poll()
+
+         currentPackage?.run {
+           organize(this)
+           packages -= currentPackage
+           hasProcessedItems = true
+         }
+         if (hasProcessedItems && currentPackage == null) {
+           cancel()
+         }
+       }
+
+     }
+    items.forEach {
+      actor.offer(it)
+    }
+  }
+
+}
+
+private fun organize(warehousePackage: Package) {
+  println("Organized package ${warehousePackage.id}: ${warehousePackage.name}")
+}
+
 
 
 
